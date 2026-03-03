@@ -1,23 +1,39 @@
-A simple URL shortener written in Nim
-###
+# nimshort
 
-1. Build, place binary on server.
+A minimal, secure URL shortener written in Nim.
 
-2. Create a password and place it in NIMSHORT_TOKEN env var, run nimshort to let it hash it for you and print a hash.
+## Server
+
+nimshort is a headless HTTP server backed by an embedded LMDB database.
+Write operations require bearer token authentication.
+
+### Build
 
 ```
-$ export NIMSHORT_TOKEN=mysecuritytoken
+NIMBLE_DIR=/opt/nimble nimble build
+```
+
+Add `/opt/nimble/bin` to PATH if building remotely.
+
+### Token Setup
+
+Generate a hash for your secret token:
+
+```
+$ export NIMSHORT_TOKEN=mysecrettoken
 $ nimshort
-abc123
+a1b2c3d4...
 ```
 
-3. Start with with systemd.
+The hash is printed to stderr and the program exits. Use it in the systemd config below.
 
-```s
-# /etc/systemd/system/nimshort.target
+### Systemd
+
+```ini
+# /etc/systemd/system/nimshort.service
 [Unit]
 Description=nimshort
-After=network.target httpd.service
+After=network.target
 Wants=network-online.target
 
 [Service]
@@ -29,8 +45,7 @@ PrivateDevices=yes
 PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=full
-Environment=NIMSHORT_HASH=abc123 NIMSHORT_PORT=7071
-0567ac01f91
+Environment=NIMSHORT_HASH=<your-hash> NIMSHORT_PORT=7071
 StateDirectory=nimshort
 WorkingDirectory=%S/nimshort
 
@@ -39,34 +54,25 @@ WantedBy=multi-user.target
 ```
 
 ```
-$ systemctl start nimshort
-$ systemctl enable nimshort
+systemctl enable --now nimshort
 ```
 
-4. Proxy with nginx
+### Nginx
 
+Proxy all requests to nimshort, serving static files first if they exist:
 
-```
-# /etc/nginx/sites-available/short.url
-server {
-  server_name capo.casa;
-  listen 80;
-  listen [::]:80;
-  return 301 https://$host$request_uri;
-}
+```nginx
 server {
   server_name short.url;
   listen 443 ssl;
   listen [::]:443 ssl;
-  ssl_certificate /etc/letsencrypt/live/short.url/fullchain
-.pem;
-  ssl_certificate_key /etc/letsencrypt/live/short.url/privk
-ey.pem;
+  ssl_certificate /etc/letsencrypt/live/short.url/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/short.url/privkey.pem;
   include /etc/letsencrypt/options-ssl-nginx.conf;
 
+  root /var/www/short.url;
   location / {
-    root /var/www/short.url;
-    try_files $uri $uri/ @nimshort;
+    try_files $uri @nimshort;
   }
   location @nimshort {
     proxy_pass http://127.0.0.1:7071;
@@ -75,24 +81,49 @@ ey.pem;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Port $server_port;
   }
-  access_log /var/log/nginx/short.url.access.log;
-  error_log /var/log/nginx/short.url.error.log;
 }
 ```
 
-```
-$ certbot -d short.url --nginx certonly
-$ ln -s /etc/nginx/sites-available/short.url /etc/nginx/sites-enabled
-$ nginx -t
-$ systemctl reload nginx
-```
-
-5. Shorten URLs
+### API
 
 ```
-curl -H 'Auth: Bearer mysecuritytoken' -XPUT -d "https://reall.long.url" https://capo.casa/myshort
+PUT    /<key>   Auth: Bearer <token>   Body: <url>   → 201
+GET    /<key>                                         → 301 redirect
+HEAD   /<key>                                         → 200 / 404
+DELETE /<key>   Auth: Bearer <token>                   → 201 / 404
 ```
 
-Note you provide your own myshort url component.
+## CLI
 
+The `shorten` command is a companion CLI tool included in the same package.
 
+### Setup
+
+Add to `~/.bashrc`:
+
+```bash
+export SHORTEN_KEY=mysecrettoken
+export SHORTEN_URL=https://short.url
+```
+
+### Usage
+
+```bash
+# Shorten a URL
+shorten https://example.com/very/long/url
+# https://short.url/abcdef
+
+# Pipe from stdin
+echo https://example.com/long | shorten
+
+# Look up a short URL
+shorten get abcdef
+# https://example.com/very/long/url
+
+# Delete a short URL
+shorten delete abcdef
+```
+
+## License
+
+MIT

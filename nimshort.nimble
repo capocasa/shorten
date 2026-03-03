@@ -5,7 +5,7 @@ author        = "Carlo Capocasa"
 description   = "Super simple URL shortener"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["nimshort"]
+bin           = @["nimshort", "shorten"]
 
 # Dependencies
 

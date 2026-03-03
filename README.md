@@ -1,19 +1,17 @@
-# nimshort
+# shorten
 
 A minimal, secure URL shortener written in Nim.
 
 ## Server
 
-nimshort is a headless HTTP server backed by an embedded LMDB database.
+`shortend` is a headless HTTP server backed by an embedded LMDB database.
 Write operations require bearer token authentication.
 
 ### Build
 
 ```
-NIMBLE_DIR=/opt/nimble nimble build
+nimble build
 ```
-
-Add `/opt/nimble/bin` to PATH if building remotely.
 
 ### Token Setup
 
@@ -21,7 +19,7 @@ Generate a hash for your secret token:
 
 ```
 $ export NIMSHORT_TOKEN=mysecrettoken
-$ nimshort
+$ shortend
 a1b2c3d4...
 ```
 
@@ -30,15 +28,15 @@ The hash is printed to stderr and the program exits. Use it in the systemd confi
 ### Systemd
 
 ```ini
-# /etc/systemd/system/nimshort.service
+# /etc/systemd/system/shortend.service
 [Unit]
-Description=nimshort
+Description=shortend
 After=network.target
 Wants=network-online.target
 
 [Service]
 DynamicUser=True
-ExecStart=nimshort
+ExecStart=shortend
 Restart=always
 NoNewPrivileges=yes
 PrivateDevices=yes
@@ -46,20 +44,20 @@ PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=full
 Environment=NIMSHORT_HASH=<your-hash> NIMSHORT_PORT=7071
-StateDirectory=nimshort
-WorkingDirectory=%S/nimshort
+StateDirectory=shortend
+WorkingDirectory=%S/shortend
 
 [Install]
 WantedBy=multi-user.target
 ```
 
 ```
-systemctl enable --now nimshort
+systemctl enable --now shortend
 ```
 
 ### Nginx
 
-Proxy all requests to nimshort, serving static files first if they exist:
+Proxy all requests to shortend, serving static files first if they exist:
 
 ```nginx
 server {
@@ -72,9 +70,9 @@ server {
 
   root /var/www/short.url;
   location / {
-    try_files $uri @nimshort;
+    try_files $uri @shortend;
   }
-  location @nimshort {
+  location @shortend {
     proxy_pass http://127.0.0.1:7071;
     proxy_buffering off;
     proxy_set_header X-Real-IP $remote_addr;
@@ -127,7 +125,7 @@ shorten delete abcdef
 ## Changelog
 
 ```
-0.2.0   Add shorten CLI tool and rewrite README
+0.2.0   Rename to shorten, add CLI tool
 0.1.0   Minimal secure headless URL shortener
 ```
 

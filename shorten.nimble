@@ -2,10 +2,10 @@
 
 version       = "0.2.0"
 author        = "Carlo Capocasa"
-description   = "Super simple URL shortener"
+description   = "Minimal secure URL shortener"
 license       = "MIT"
 srcDir        = "src"
-bin           = @["nimshort", "shorten"]
+bin           = @["shortend", "shorten"]
 
 # Dependencies
 

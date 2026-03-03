@@ -124,6 +124,13 @@ shorten get abcdef
 shorten delete abcdef
 ```
 
+## Changelog
+
+```
+0.2.0   Add shorten CLI tool and rewrite README
+0.1.0   Minimal secure headless URL shortener
+```
+
 ## License
 
 MIT
